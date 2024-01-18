@@ -64,6 +64,7 @@ function processInputFile(ipssid, opssid) {
            Logger.log('Processed ' + ipssname + ' TRADE' + worksheet + ' [ ' + result + ' USD ].'); // Log the processing of each sheet.
          }); // Process each sheet in the input spreadsheet
   opss.getSheetByName('SUMMARY').getDataRange().setBorder(true, true, true, true, true, true); // Set border for all data in sheet.
+  opss.getSheetByName('SUMMARY').getRange('C:C').setNumberFormat('$#,##0.00'); // Format numbers as currency.
 }
 
 /**
@@ -132,4 +133,6 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
   ps.getDataRange().setFontFamily('Oswald'); // Use the 'Oswald' font in the data range.
   ps.getDataRange().setBorder(true,true,true,true,true,true) // Apply a border to every cell in the data range.
   ps.setHiddenGridlines(true); // Hide gridlines.
+
+  if (sheetName !== 'NUMPIVOT') { ps.getDataRange().setNumberFormat('$#,##0.00'); } // Format currencies as currency.
 }
