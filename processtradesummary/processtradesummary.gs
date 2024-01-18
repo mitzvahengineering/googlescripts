@@ -6,8 +6,8 @@ function processFolder() {
   let testfolderid = '1z38V8POr9lXNAoFBM-7I5_8GG9t5E2wx'; // Test folder identifier.
   let realfolderid = '1k0FhOtK-3_mGoH5CnC9axY2l2FsP7h1q'; // Real folder identifier.
   const opfolderid = '1zFsCLutd5pboDamsClZZBRsvPHB6QDwu'; // Dump folder identifier.
-  const infolderid = testfolderid; // Identifier of the folder of trades to process.
-  const reportdate = Utilities.formatDate(new Date(), 'GMT', 'yyyyMMddHHmmss'); // Timestamp for output file.
+  const infolderid = realfolderid; // Identifier of the folder of trades to process.
+  const reportdate = Utilities.formatDate(new Date(), 'GMT', 'yyyyMMdd'); // Datestamp for output file (yyyyMMddHHmmss is too fine).
   const foldername = DriveApp.getFolderById(infolderid).getName().toLowerCase(); // Foldername.
   const opfilename = `summary-of-${foldername}-${reportdate}`.replace(/\s/g, '-'); // Output filename.
   const opmetadata = {
@@ -64,7 +64,7 @@ function processInputFile(ipssid, opssid) {
            Logger.log('Processed ' + ipssname + ' TRADE' + worksheet + ' [ ' + result + ' USD ].'); // Log the processing of each sheet.
          }); // Process each sheet in the input spreadsheet
   opss.getSheetByName('SUMMARY').getDataRange().setBorder(true, true, true, true, true, true); // Set border for all data in sheet.
-  opss.getSheetByName('SUMMARY').getRange('C:C').setNumberFormat('$#,##0.00'); // Format numbers as currency.
+  opss.getSheetByName('SUMMARY').getRange('C2:C').setNumberFormat('$#,##0.00'); // Format numbers as currency.
 }
 
 /**
@@ -121,7 +121,7 @@ function createPivotTables(ssid) {
 function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFunction) {
   const ss = SpreadsheetApp.openById(ssid); // Open the spreadshet by ID (with the ssid identifier).
   const sn = ss.getSheetByName('SUMMARY'); // Access the 'SUMMARY' sheet within the spreadsheet.
-  const sc = 7; // Exclude the first 6 (header) rows to define the range of the Pivot Table source data.
+  const sc = 6; // Exclude the first 5 (header) rows to define the range of the Pivot Table source data.
   const pr = sn.getRange(sc, 1, sn.getLastRow() - sc + 1, sn.getLastColumn()); // Define the range of the Pivot Table source data.
   const ps = ss.insertSheet(sheetName); // Create a new sheet for the pivot table.
   const pt = ps.getRange('A1').createPivotTable(pr); // Create the pivot table in the new sheet.
@@ -134,5 +134,8 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
   ps.getDataRange().setBorder(true,true,true,true,true,true) // Apply a border to every cell in the data range.
   ps.setHiddenGridlines(true); // Hide gridlines.
 
-  if (sheetName !== 'NUMPIVOT') { ps.getDataRange().setNumberFormat('$#,##0.00'); } // Format currencies as currency.
+  if (sheetName !== 'NUMPIVOT') { 
+    ps.getDataRange().setNumberFormat('$#,##0.00'); // Format currencies as currency.
+    ps.getRange("1:2").setNumberFormat("0"); // Format header row numbers as numbers.
+  } 
 }
