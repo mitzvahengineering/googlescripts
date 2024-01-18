@@ -1,7 +1,7 @@
-# Google Sheets Processing Script
+# Google Sheets Trade Processing Script
 
 ## Overview
-This script is designed to process and analyze data from a series of Google Sheets within a specified folder. It aggregates data into a summary report, creates pivot tables for data analysis, and sets up the sheets with specified formatting and layout.
+This script is designed to process and analyze trade data from a series of Google Sheets within a specified folder. It aggregates data into a summary report, creates pivot tables for data analysis, and sets up the sheets with specified formatting and layout.
 
 ## Main Features
 - **Process Folder**: Iterates over Google Sheets in a specified folder, extracting and processing data.
