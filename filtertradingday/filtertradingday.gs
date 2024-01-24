@@ -7,13 +7,15 @@
  * - Data is expected to start from the third row.
  * 
  * NOTE:
- *  -  The trading day include options settlement times for assignment and expiration. To rollback to:
- *  const stoppingday = new Date(startingday.getTime() + (6 * 60 + 30) * 60000);
+ *  - The trading day include options settlement times for assignment and expiration. To rollback to:
+ *    const stoppingday = new Date(startingday.getTime() + (6 * 60 + 30) * 60000);
+ *  - For Myanmar, use:
+ *    const startingday = new Date(tradingdate.getTime() + (21 * 60 + 00) * 60000); // Adds 21 hours to tradingdate.
  */
 function filterTradingDay() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet(); // Get the active spreadsheet.
-  const tradingdate = new Date('2024/01/22'); // Trading date in the timezone of the exchange (for example, New York).
-  const startingday = new Date(tradingdate.getTime() + (23 * 60 + 30) * 60000); // Adds 23 hours and 30 minutes to tradingdate.
+  const tradingdate = new Date('2024/01/23'); // Trading date in the timezone of the exchange (for example, New York).
+  const startingday = new Date(tradingdate.getTime() + (21 * 60 + 00) * 60000); // Adds 23 hours and 30 minutes to tradingdate.
   const stoppingday = new Date(startingday.getTime() + (23 * 60 + 59) * 60000); // Adds 23 hours and 59 minutes to startingday.
   const coloredtext = ["blue", "brown", "purple", "orange", "green", "red"]; // Define text colors for each trading account.
   let sheetColors = {};
