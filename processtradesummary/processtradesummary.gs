@@ -20,7 +20,11 @@ function createPivotTableOnSummary(ssid, rowGroupIndex, valueIndex) {
   const pivotTableRange = pivotSheet.getRange('A1'); // The cell where the pivot table will start.
   const pivotTable = pivotTableRange.createPivotTable(dataRange); // Create the pivot table in the new sheet.
 
-  pivotTable.addRowGroup(rowGroupIndex); // Configure the pivot table row group.
+  // Configure the pivot table row group with sorting
+  const rowGroup = pivotTable.addRowGroup(rowGroupIndex);
+  rowGroup.showTotals(true);
+  rowGroup.sortDescending();
+
   pivotTable.addPivotValue(valueIndex, SpreadsheetApp.PivotTableSummarizeFunction.SUM); // Configure the pivot table pivot values.
 
   // Format the pivot table
