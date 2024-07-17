@@ -7,9 +7,9 @@
  */
 function createPivotTableOnSummary(ssid, rowGroupIndex, valueIndex) {
   const ss = SpreadsheetApp.openById(ssid); // Open the spreadsheet by ID.
-  const summarySheet = ss.getSheetByName('SUMMARY'); // Access the 'SUMMARY' sheet within the spreadsheet.
-  const dataRange = summarySheet.getDataRange(); // Get the data range of the 'SUMMARY' sheet.
-  const pivotSheetName = 'SUMMARY_PIVOT';
+  const summarySheet = ss.getSheetByName('TRADE SUMMARY'); // Access the 'TRADE SUMMARY' sheet within the spreadsheet.
+  const dataRange = summarySheet.getDataRange(); // Get the data range of the 'TRADE SUMMARY' sheet.
+  const pivotSheetName = 'TICKER PERFORMANCE';
   
   // Check if the pivot sheet already exists and delete it if it does
   if (ss.getSheetByName(pivotSheetName)) {
@@ -77,7 +77,7 @@ function setupSummarySheet(summarysheet) {
     ['DEV', '=IFERROR(ROUND(STDEV(C7:C),2),0)'] // Standard deviation, rounded to 2 decimal places.
   ];
 
-  summarysheet.setName('SUMMARY').setHiddenGridlines(true).getDataRange().setFontFamily('Oswald');
+  summarysheet.setName('TRADE SUMMARY').setHiddenGridlines(true).getDataRange().setFontFamily('Oswald');
   summarysheet.getRange(1, 1, rowheaders.length, 3).setBackground('#000000').setFontColor('#ffffff');
   summarysheet.getRange(1, 2, rowheaders.length, rowheaders[0].length).setValues(rowheaders);
   summarysheet.setFrozenRows(6);
@@ -96,11 +96,11 @@ function processInputFile(ipssid, opssid) {
   const sssearch = 'Total'; // Define the string to search for in each sheet.
   ipss.getSheets().map(sheet => sheet.getName()).sort().forEach(worksheet => {
     const result = stringSearch(ipss, worksheet, sssearch); // Use stringSearch function to find the string in the current sheet.
-    opss.getSheetByName('SUMMARY').appendRow([ipssname, worksheet, result]); // Append the found data to the output spreadsheet.
+    opss.getSheetByName('TRADE SUMMARY').appendRow([ipssname, worksheet, result]); // Append the found data to the output spreadsheet.
     Logger.log('Processed ' + ipssname + ' TRADE ' + worksheet + ' [ ' + result + ' USD ].'); // Log the processing of each sheet.
   }); // Iterate through each sheet in the input spreadsheet.
-  opss.getSheetByName('SUMMARY').getDataRange().setBorder(true, true, true, true, true, true); // Set border for all data in the sheet.
-  opss.getSheetByName('SUMMARY').getRange('C2:C').setNumberFormat('$#,##0.00'); // Format numbers as currency.
+  opss.getSheetByName('TRADE SUMMARY').getDataRange().setBorder(true, true, true, true, true, true); // Set border for all data in the sheet.
+  opss.getSheetByName('TRADE SUMMARY').getRange('C2:C').setNumberFormat('$#,##0.00'); // Format numbers as currency.
 }
 
 /**
@@ -161,7 +161,7 @@ function createPivotTables(ssid) {
  */
 function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFunction) {
   const ss = SpreadsheetApp.openById(ssid); // Open the spreadsheet by ID (with the ssid identifier).
-  const sn = ss.getSheetByName('SUMMARY'); // Access the 'SUMMARY' sheet within the spreadsheet.
+  const sn = ss.getSheetByName('TRADE SUMMARY'); // Access the 'TRADE SUMMARY' sheet within the spreadsheet.
   const sc = 6; // Exclude the first 5 (header) rows to define the range of the Pivot Table source data.
   const pr = sn.getRange(sc, 1, sn.getLastRow() - sc + 1, sn.getLastColumn()); // Define the range of the Pivot Table source data.
   const ps = ss.insertSheet(sheetName); // Create a new sheet for the pivot table.
