@@ -1,14 +1,15 @@
 /**
  * Main function to process spreadsheets in a specified folder and generate a summary report.
+ * It processes all Google Sheets files in the specified folder, extracts relevant data, and creates a summary sheet
+ * with statistical information and pivot tables.
  */
 function processFolder() {
-
-  let testfolderid = '1z38V8POr9lXNAoFBM-7I5_8GG9t5E2wx'; // Test folder identifier.
-  let realfolderid = '1k0FhOtK-3_mGoH5CnC9axY2l2FsP7h1q'; // Real folder identifier.
-  const opfolderid = '1zFsCLutd5pboDamsClZZBRsvPHB6QDwu'; // Dump folder identifier.
+  const testfolderid = '1z38V8POr9lXNAoFBM-7I5_8GG9t5E2wx'; // Test folder identifier.
+  const realfolderid = '1k0FhOtK-3_mGoH5CnC9axY2l2FsP7h1q'; // Real folder identifier.
+  const opfolderid = '1zFsCLutd5pboDamsClZZBRsvPHB6QDwu'; // Folder where the summary report will be saved.
   const infolderid = realfolderid; // Identifier of the folder of trades to process.
-  const reportdate = Utilities.formatDate(new Date(), 'GMT', 'yyyyMMdd'); // Datestamp for output file (yyyyMMddHHmmss is too fine).
-  const foldername = DriveApp.getFolderById(infolderid).getName().toLowerCase(); // Foldername.
+  const reportdate = Utilities.formatDate(new Date(), 'GMT', 'yyyyMMdd'); // Datestamp for output file (format: yyyyMMdd).
+  const foldername = DriveApp.getFolderById(infolderid).getName().toLowerCase(); // Name of the input folder.
   const opfilename = `summary-of-${foldername}-${reportdate}`.replace(/\s/g, '-'); // Output filename.
   const opmetadata = {
     name: opfilename, // Declare the output filename.
@@ -16,14 +17,15 @@ function processFolder() {
     parents: [opfolderid] // Folder id of the newly created spreadsheet.
   }; // Metadata for creating the output file in the desired folder.
 
-  const opmetafile = Drive.Files.create(opmetadata); // To use 'Drive' enable the 'Drive API' Advanced Drive Service.
-  const opdatafile = SpreadsheetApp.openById(opmetafile.id); // Trade Summary Spreadsheet
-  setupSummarySheet(opdatafile.getSheets()[0]); // Prepare and format spreadsheet cast.
+  // Create a new Google Sheets file for the summary report.
+  const opmetafile = Drive.Files.create(opmetadata); // Requires 'Drive API' Advanced Drive Service.
+  const opdatafile = SpreadsheetApp.openById(opmetafile.id); // Open the newly created spreadsheet.
+  setupSummarySheet(opdatafile.getSheets()[0]); // Prepare and format the summary sheet.
   
-  const datafileid = opdatafile.getId(); // Define output datafile identifier.
-  const inputfiles = DriveApp.getFolderById(infolderid).getFilesByType(MimeType.GOOGLE_SHEETS); // Get folder files.
-  while (inputfiles.hasNext()) { processInputFile(inputfiles.next().getId(), datafileid); } // Proces folder files.
-  createPivotTables(datafileid); // Create pivot sheets and tables.
+  const datafileid = opdatafile.getId(); // Define the ID of the output data file.
+  const inputfiles = DriveApp.getFolderById(infolderid).getFilesByType(MimeType.GOOGLE_SHEETS); // Get all Google Sheets files in the input folder.
+  while (inputfiles.hasNext()) { processInputFile(inputfiles.next().getId(), datafileid); } // Process each file in the input folder.
+  createPivotTables(datafileid); // Create pivot tables in the summary report.
 }
 
 /**
@@ -39,7 +41,8 @@ function setupSummarySheet(summarysheet) {
     ['MIN', '=MIN(C7:C)'], // Minimum value.
     ['MAX', '=MAX(C7:C)'], // Maximum value.
     ['DEV', '=IFERROR(ROUND(STDEV(C7:C),2),0)'] // Standard deviation, rounded to 2 decimal places.
-  ]; // Define row headers and formulas for the summary sheet.
+  ];
+
   summarysheet.setName('SUMMARY').setHiddenGridlines(true).getDataRange().setFontFamily('Oswald');
   summarysheet.getRange(1, 1, rowheaders.length, 3).setBackground('#000000').setFontColor('#ffffff');
   summarysheet.getRange(1, 2, rowheaders.length, rowheaders[0].length).setValues(rowheaders);
@@ -54,16 +57,15 @@ function setupSummarySheet(summarysheet) {
  */
 function processInputFile(ipssid, opssid) {
   const ipss = SpreadsheetApp.openById(ipssid); // Open the input spreadsheet by its ID.
-  const opss = SpreadsheetApp.openById(opssid); // Open the output spreadsheet by its ID
+  const opss = SpreadsheetApp.openById(opssid); // Open the output spreadsheet by its ID.
   const ipssname = ipss.getName(); // Retrieve the name of the input spreadsheet.
   const sssearch = 'Total'; // Define the string to search for in each sheet.
-  ipss.getSheets().map(sheet => sheet.getName()).sort()
-         .forEach( worksheet => {
-           const result = stringSearch(ipss, worksheet, sssearch); // Use stringSearch function to find string in the current sheet.
-           opss.getSheetByName('SUMMARY').appendRow([ipssname, worksheet, result]); // Append the found data to the output spreadsheet.
-           Logger.log('Processed ' + ipssname + ' TRADE' + worksheet + ' [ ' + result + ' USD ].'); // Log the processing of each sheet.
-         }); // Process each sheet in the input spreadsheet
-  opss.getSheetByName('SUMMARY').getDataRange().setBorder(true, true, true, true, true, true); // Set border for all data in sheet.
+  ipss.getSheets().map(sheet => sheet.getName()).sort().forEach(worksheet => {
+    const result = stringSearch(ipss, worksheet, sssearch); // Use stringSearch function to find the string in the current sheet.
+    opss.getSheetByName('SUMMARY').appendRow([ipssname, worksheet, result]); // Append the found data to the output spreadsheet.
+    Logger.log('Processed ' + ipssname + ' TRADE ' + worksheet + ' [ ' + result + ' USD ].'); // Log the processing of each sheet.
+  }); // Iterate through each sheet in the input spreadsheet.
+  opss.getSheetByName('SUMMARY').getDataRange().setBorder(true, true, true, true, true, true); // Set border for all data in the sheet.
   opss.getSheetByName('SUMMARY').getRange('C2:C').setNumberFormat('$#,##0.00'); // Format numbers as currency.
 }
 
@@ -78,7 +80,7 @@ function processInputFile(ipssid, opssid) {
 function stringSearch(ss, tab, sssearch) {
   const tabObject = ss.getSheetByName(tab); // Retrieve the specific sheet from the spreadsheet by name.
   const totalCell = findCellContainingString(tabObject, sssearch); // Use helper function to find the cell containing the search string.
-  return totalCell ? tabObject.getRange(totalCell.getRow(), totalCell.getColumn() + 1).getValue() : null;
+  return totalCell ? tabObject.getRange(totalCell.getRow(), totalCell.getColumn() + 1).getValue() : null; // If the cell is found, return the value of the adjacent cell; otherwise, return null.
 } // If the cell is found, return the value of the adjacent cell; otherwise, return null.
 
 /**
@@ -97,9 +99,14 @@ function findCellContainingString(tabObject, sssearch) {
       }
     }
   } // Iterate through the array to find the cell that contains the search string.
-  return null;
-} // Return null if the string is not found in any cell.
+  return null; // Return null if the string is not found in any cell.
+}
 
+/**
+ * Creates pivot tables in a new sheet within the specified spreadsheet for different statistical functions.
+ *
+ * @param {string} ssid - The ID of the spreadsheet where the pivot table will be created.
+ */
 function createPivotTables(ssid) {
   createPivotTable(ssid, 'DEVPIVOT', 1, 2, SpreadsheetApp.PivotTableSummarizeFunction.STDEV);
   createPivotTable(ssid, 'MINPIVOT', 1, 2, SpreadsheetApp.PivotTableSummarizeFunction.MIN);
@@ -119,7 +126,7 @@ function createPivotTables(ssid) {
  * @param {string} pivotFunction - The function to apply to the pivot table values (e.g., 'SUM', 'COUNTA').
  */
 function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFunction) {
-  const ss = SpreadsheetApp.openById(ssid); // Open the spreadshet by ID (with the ssid identifier).
+  const ss = SpreadsheetApp.openById(ssid); // Open the spreadsheet by ID (with the ssid identifier).
   const sn = ss.getSheetByName('SUMMARY'); // Access the 'SUMMARY' sheet within the spreadsheet.
   const sc = 6; // Exclude the first 5 (header) rows to define the range of the Pivot Table source data.
   const pr = sn.getRange(sc, 1, sn.getLastRow() - sc + 1, sn.getLastColumn()); // Define the range of the Pivot Table source data.
@@ -128,14 +135,16 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
   pt.addRowGroup(rowGroupIndex); // Configure the pivot table row group.
   pt.addColumnGroup(colGroupIndex); // Configure the pivot table column group.
   pt.addPivotValue(3, pivotFunction); // Configure the pivot table pivot values.
+
+  // Format the pivot table
+  const dr = ps.getDataRange(); // Get the data range after pivot creation.
   ps.setFrozenRows(2); // Freeze the first two (header) rows.
   ps.setFrozenColumns(1); // Freeze the header column.
-  ps.getDataRange().setFontFamily('Oswald'); // Use the 'Oswald' font in the data range.
-  ps.getDataRange().setBorder(true,true,true,true,true,true) // Apply a border to every cell in the data range.
+  dr.setFontFamily('Oswald'); // Use the 'Oswald' font in the data range.
+  dr.setBorder(true, true, true, true, true, true); // Apply a border to every cell in the data range.
   ps.setHiddenGridlines(true); // Hide gridlines.
-
-  if (sheetName !== 'NUMPIVOT') { 
-    ps.getDataRange().setNumberFormat('$#,##0.00'); // Format currencies as currency.
+  if (sheetName !== 'NUMPIVOT') {
+    dr.setNumberFormat('$#,##0.00'); // Format currencies as currency.
     ps.getRange("1:2").setNumberFormat("0"); // Format header row numbers as numbers.
-  } 
+  } // Ensure that totals are formatted
 }
