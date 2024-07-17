@@ -119,9 +119,9 @@ function processInputFile(ipssid, opssid) {
       const result = stringSearch(ipss, worksheet, config.textsearch); // Use stringSearch function to find the string in the current sheet.
       if (result !== null) {
         opssname.appendRow([ipssname, worksheet, result]); // Append the found data to the output spreadsheet.
-        Logger.log('Processed ' + ipssname + ' TRADE ' + worksheet + ' [ ' + result + ' USD ].');
+        Logger.log(`Processed ${ipssname} TRADE ${worksheet} [ ${result} USD ].`);
       } else {
-        Logger.log('No "' + config.textsearch + '" found in ' + ipssname + ' TRADE ' + worksheet);
+        Logger.log(`No "${config.textsearch}" found in ${ipssname} TRADE ${worksheet}`); // Log the missing value but don't append to the summary sheet
       }
     }); // Iterate through each sheet in the input spreadsheet.
     
@@ -137,19 +137,28 @@ function processInputFile(ipssid, opssid) {
  * @param {SpreadsheetApp.Spreadsheet} ss - The spreadsheet object.
  * @param {string} tab - The name of the sheet within the spreadsheet to search.
  * @param {string} textsearch - The string to search for within the sheet.
- * @return {number|null} - Returns the value of the cell adjacent to the found string, or null if not found.
+ * @return {number|null} - Returns the numeric value of the cell adjacent to the found string, or null if not found or not numeric.
  */
 function stringSearch(ss, tab, textsearch) {
-  const object = ss.getSheetByName(tab); // Retrieve the specific sheet from the spreadsheet by name.
-  const values = object.getDataRange().getValues(); // Get all values from the sheet as a 2D array.
-  for (let i = 0; i < values.length; i++) {
-    const index = values[i].indexOf(textsearch);
-    if (index !== -1 && index + 1 < values[i].length) {
-      const value = values[i][index + 1];
-      return typeof value === 'number' ? value : null; // Return the value only if it's a number
+  try {
+    const object = ss.getSheetByName(tab); // Retrieve the specific sheet from the spreadsheet by name.
+    if (!object) {
+      Logger.log(`Sheet "${tab}" not found in spreadsheet.`);
+      return null;
     }
+    const values = object.getDataRange().getValues();  // Get all values from the sheet as a 2D array.
+    for (let row of values) {
+      const index = row.indexOf(textsearch);
+      if (index !== -1 && index + 1 < row.length) {
+        const value = row[index + 1];
+        return typeof value === 'number' ? value : null; // Return the value only if it's a number
+      }
+    }
+    return null; // Return null if the string is not found in any cell.
+  } catch (error) {
+    Logger.log(`Error in stringSearch for tab "${tab}": ${error.message}`);
+    return null;
   }
-  return null; // Return null if the string is not found in any cell.
 }
 
 /**
@@ -247,18 +256,6 @@ function createSummaryPivotTable(ssid) {
     const vs = pt.addPivotValue(3, SpreadsheetApp.PivotTableSummarizeFunction.SUM); // Add sum of column C and sort in descending order
     vs.setDisplayName('Amount (USD)');
     vs.setSortOrder(SpreadsheetApp.PivotTableSortOrder.DESCENDING);
-
-    ps.setHiddenGridlines(true);
-    ps.getRange('A1:C1').merge();
-    ps.getRange('A1').setValue('Ticker Performance Summary').setFontWeight('bold').setFontSize(14);
-    
-    // Format the header row (row 2)
-    ps.getRange('A2:C2').setBackground('#000000').setFontColor('#ffffff');
-    
-    ps.setFrozenRows(2);
-    
-    formatPivotTable(ps, true);
-
   } catch (error) {
     Logger.log(`Error creating summary pivot table: ${error.message}`);
   }
