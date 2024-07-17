@@ -115,15 +115,16 @@ function processInputFile(ipssid, opssid) {
     const ipssname = ipss.getName(); // Retrieve the name of the input spreadsheet.
     const opssname = opss.getSheetByName('TRADE SUMMARY');
     
-    ipss.getSheets().map(sheet => sheet.getName()).sort().forEach(worksheet => {
-      const result = stringSearch(ipss, worksheet, config.textsearch); // Use stringSearch function to find the string in the current sheet.
+    ipss.getSheets().forEach(sheet => {
+      const worksheet = sheet.getName();
+      const result = stringSearch(sheet, config.textsearch); // Use stringSearch function to find the string in the current sheet.
       if (result !== null) {
         opssname.appendRow([ipssname, worksheet, result]); // Append the found data to the output spreadsheet.
         Logger.log(`Processed ${ipssname} TRADE ${worksheet} [ ${result} USD ].`);
       } else {
         Logger.log(`No "${config.textsearch}" found in ${ipssname} TRADE ${worksheet}`); // Log the missing value but don't append to the summary sheet
       }
-    }); // Iterate through each sheet in the input spreadsheet.
+    });
     
     formatSummarySheet(opssname); // Format the summary sheet after appending data.
   } catch (error) {
@@ -134,19 +135,13 @@ function processInputFile(ipssid, opssid) {
 /**
  * Searches for a specific string in a given sheet and returns the value in the adjacent cell.
  *
- * @param {SpreadsheetApp.Spreadsheet} ss - The spreadsheet object.
- * @param {string} tab - The name of the sheet within the spreadsheet to search.
+ * @param {SpreadsheetApp.Sheet} sheet - The sheet object to search.
  * @param {string} textsearch - The string to search for within the sheet.
  * @return {number|null} - Returns the numeric value of the cell adjacent to the found string, or null if not found or not numeric.
  */
-function stringSearch(ss, tab, textsearch) {
+function stringSearch(sheet, textsearch) {
   try {
-    const object = ss.getSheetByName(tab); // Retrieve the specific sheet from the spreadsheet by name.
-    if (!object) {
-      Logger.log(`Sheet "${tab}" not found in spreadsheet.`);
-      return null;
-    }
-    const values = object.getDataRange().getValues();  // Get all values from the sheet as a 2D array.
+    const values = sheet.getDataRange().getValues();  // Get all values from the sheet as a 2D array.
     for (let row of values) {
       const index = row.indexOf(textsearch);
       if (index !== -1 && index + 1 < row.length) {
@@ -156,7 +151,7 @@ function stringSearch(ss, tab, textsearch) {
     }
     return null; // Return null if the string is not found in any cell.
   } catch (error) {
-    Logger.log(`Error in stringSearch for tab "${tab}": ${error.message}`);
+    Logger.log(`Error in stringSearch for sheet "${sheet.getName()}": ${error.message}`);
     return null;
   }
 }
