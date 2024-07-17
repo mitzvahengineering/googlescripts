@@ -1,8 +1,41 @@
 /**
- * Main function to process spreadsheets in a specified folder and generate a summary report.
- * It processes all Google Sheets files in the specified folder, extracts relevant data, and creates a summary sheet
- * with statistical information and pivot tables.
+ * Creates a pivot table in the specified spreadsheet.
+ *
+ * @param {string} ssid - The ID of the spreadsheet where the pivot table will be created.
+ * @param {number} rowGroupIndex - The index of the column to group by in rows (1-indexed).
+ * @param {number} valueIndex - The index of the column to summarize in the pivot table (1-indexed).
  */
+function createPivotTableOnSummary(ssid, rowGroupIndex, valueIndex) {
+  const ss = SpreadsheetApp.openById(ssid); // Open the spreadsheet by ID.
+  const summarySheet = ss.getSheetByName('SUMMARY'); // Access the 'SUMMARY' sheet within the spreadsheet.
+  const dataRange = summarySheet.getDataRange(); // Get the data range of the 'SUMMARY' sheet.
+  const pivotSheetName = 'SUMMARY_PIVOT';
+  
+  // Check if the pivot sheet already exists and delete it if it does
+  if (ss.getSheetByName(pivotSheetName)) {
+    ss.deleteSheet(ss.getSheetByName(pivotSheetName));
+  }
+  
+  const pivotSheet = ss.insertSheet(pivotSheetName); // Create a new sheet for the pivot table.
+  const pivotTableRange = pivotSheet.getRange('A1'); // The cell where the pivot table will start.
+  const pivotTable = pivotTableRange.createPivotTable(dataRange); // Create the pivot table in the new sheet.
+
+  pivotTable.addRowGroup(rowGroupIndex); // Configure the pivot table row group.
+  pivotTable.addPivotValue(valueIndex, SpreadsheetApp.PivotTableSummarizeFunction.SUM); // Configure the pivot table pivot values.
+
+  // Format the pivot table
+  const dr = pivotSheet.getDataRange(); // Get the data range after pivot creation.
+  pivotSheet.setFrozenRows(2); // Freeze the first two (header) rows.
+  pivotSheet.setFrozenColumns(1); // Freeze the header column.
+  dr.setFontFamily('Oswald'); // Use the 'Oswald' font in the data range.
+  dr.setBorder(true, true, true, true, true, true); // Apply a border to every cell in the data range.
+  pivotSheet.setHiddenGridlines(true); // Hide gridlines.
+
+  dr.setNumberFormat('$#,##0.00'); // Format currencies as currency.
+  pivotSheet.getRange("1:2").setNumberFormat("0"); // Format header row numbers as numbers.
+}
+
+// Call this function after processing the input files
 function processFolder() {
   const testfolderid = '1z38V8POr9lXNAoFBM-7I5_8GG9t5E2wx'; // Test folder identifier.
   const realfolderid = '1k0FhOtK-3_mGoH5CnC9axY2l2FsP7h1q'; // Real folder identifier.
@@ -26,6 +59,7 @@ function processFolder() {
   const inputfiles = DriveApp.getFolderById(infolderid).getFilesByType(MimeType.GOOGLE_SHEETS); // Get all Google Sheets files in the input folder.
   while (inputfiles.hasNext()) { processInputFile(inputfiles.next().getId(), datafileid); } // Process each file in the input folder.
   createPivotTables(datafileid); // Create pivot tables in the summary report.
+  createPivotTableOnSummary(datafileid, 1, 3); // Create pivot table on the summary sheet.
 }
 
 /**
