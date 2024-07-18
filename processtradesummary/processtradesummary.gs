@@ -75,9 +75,6 @@ function processFolder() {
     
     createPivotTables(datafileid); // Create pivot tables in the summary report
 
-    const tp = ss.getSheetByName('TICKER PERFORMANCE'); // Get the TICKER PERFORMANCE sheet
-    if (tp) { ss.moveActiveSheet(ss.getSheets().indexOf(tp) + 1); } // Move the TICKER PERFORMANCE sheet to first position
-
     Logger.log("Processing completed successfully.");
   } catch (error) {
     Logger.log(`Error in processFolder: ${error.message}`);
@@ -100,24 +97,13 @@ function setupSummarySheet(summarysheet) {
     ['DEV', '=IFERROR(ROUND(STDEV(C8:C),2),0)'], // Standard deviation, rounded to 2 decimal places (updated to start from row 8)
     ['TRX', 'GAIN'] // New row for transaction gain (placeholder, formula to be implemented)
   ];
-
-  // Set the name of the sheet, hide gridlines, and set the font family for the entire range
-  summarysheet.setName('TRADE SUMMARY').setHiddenGridlines(true).getDataRange().setFontFamily('Oswald'); 
   
-  // Set background and font color for the header area (now includes 7 rows)
-  summarysheet.getRange(1, 1, rowheaders.length, 3).setBackground('#000000').setFontColor('#ffffff');
-  
-  // Set values for row headers and formulas
-  summarysheet.getRange(1, 2, rowheaders.length, rowheaders[0].length).setValues(rowheaders);
-  
-  // Align row headers (first column) to the right
-  summarysheet.getRange(1, 2, rowheaders.length, 1).setHorizontalAlignment('right');
-  
-  // NEW: Right-justify column C of the header row
-  summarysheet.getRange(1, 3, rowheaders.length, 1).setHorizontalAlignment('right');
-  
-  // Freeze the top 7 rows (increased from 6 to account for the new row)
-  summarysheet.setFrozenRows(7);
+  summarysheet.setName('TRADE SUMMARY').setHiddenGridlines(true).getDataRange().setFontFamily('Oswald'); // Set the name of the sheet, hide gridlines, and set the font family for the entire range
+  summarysheet.getRange(1, 1, rowheaders.length, 3).setBackground('#000000').setFontColor('#ffffff'); // Set background and font color for the header area (now includes 7 rows)
+  summarysheet.getRange(1, 2, rowheaders.length, rowheaders[0].length).setValues(rowheaders); // Set values for row headers and formulas
+  summarysheet.getRange(1, 2, rowheaders.length, 1).setHorizontalAlignment('right'); // Align row headers (first column) to the right
+  summarysheet.getRange(1, 3, rowheaders.length, 1).setHorizontalAlignment('right'); // NEW: Right-justify column C of the header row
+  summarysheet.setFrozenRows(7); // Freeze the top 7 rows (increased from 6 to account for the new row)
 }
 
 /**
@@ -185,36 +171,36 @@ function stringSearch(sheet, textsearch) {
  */
 function formatSummarySheet(sheet) {
   try {
-    const lastRow = sheet.getLastRow();
-    const lastColumn = sheet.getLastColumn();
+    const lr = sheet.getLastRow();
+    const lc = sheet.getLastColumn();
     
-    Logger.log(`Formatting summary sheet. Rows: ${lastRow}, Columns: ${lastColumn}`);
+    Logger.log(`Formatting summary sheet. Rows: ${lr}, Columns: ${lc}`);
 
-    if (lastRow < 8 || lastColumn < 3) { // Changed from 7 to 8 to account for the new header row
-      Logger.log(`Warning: Summary sheet has insufficient data. Rows: ${lastRow}, Columns: ${lastColumn}`);
+    if (lr < 8 || lc < 3) { // Changed from 7 to 8 to account for the new header row
+      Logger.log(`Warning: Summary sheet has insufficient data. Rows: ${lr}, Columns: ${lc}`);
       return;
     }
 
     // Set border for all data in the sheet
     Logger.log('Applying borders...');
-    sheet.getRange(1, 1, lastRow, lastColumn).setBorder(true, true, true, true, true, true);
+    sheet.getRange(1, 1, lr, lc).setBorder(true, true, true, true, true, true);
 
     // Format numbers as currency, but only if the column exists
-    if (lastColumn >= 3) {
+    if (lc >= 3) {
       Logger.log('Formatting currency...');
-      sheet.getRange(2, 3, lastRow - 1, 1).setNumberFormat('$#,##0.00');
+      sheet.getRange(2, 3, lr - 1, 1).setNumberFormat('$#,##0.00');
     }
     
     // Add alternating row colors
-    if (lastRow > 8) { // Changed from 7 to 8 to account for the new header row
+    if (lr > 8) { // Changed from 7 to 8 to account for the new header row
       Logger.log('Applying alternating colors...');
-      const colorRange = sheet.getRange(8, 1, lastRow - 7, lastColumn); // Changed from 7 to 8
-      const colors = createAlternatingColors(lastRow - 7, lastColumn); // Changed from 6 to 7
-      Logger.log(`Created colors array with ${colors.length} rows and ${colors[0].length} columns`);
-      colorRange.setBackgrounds(colors);
+      const range = sheet.getRange(8, 1, lr - 7, lc); // Changed from 7 to 8
+      const blend = createAlternatingColors(lr - 7, lc); // Changed from 6 to 7
+      Logger.log(`Created colors array with ${blend.length} rows and ${blend[0].length} columns`);
+      range.setBackgrounds(blend);
     }
     
-    Logger.log(`Successfully formatted summary sheet. Rows: ${lastRow}, Columns: ${lastColumn}`);
+    Logger.log(`Successfully formatted summary sheet. Rows: ${lr}, Columns: ${lc}`);
   } catch (error) {
     Logger.log(`Error in formatSummarySheet: ${error.message}`);
     Logger.log(`Error occurred at: ${error.stack}`);
@@ -280,7 +266,7 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
   try {
     const ss = SpreadsheetApp.openById(ssid); // Open the spreadsheet by ID
     const sn = ss.getSheetByName('TRADE SUMMARY'); // Access the 'TRADE SUMMARY' sheet within the spreadsheet
-    const headerRow = 7; // The row containing the headers
+    const hr = 7; // The row containing the headers
     const sc = 8; // Start from row 8 for the actual data (row after headers)
     const lr = sn.getLastRow();
     const lc = sn.getLastColumn();
@@ -300,24 +286,24 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
     const pt = ps.getRange('A1').createPivotTable(pr); // Create the pivot table in the new sheet
     
     // Set the row group and its header
-    const rowGroup = pt.addRowGroup(rowGroupIndex);
-    rowGroup.showTotals(true);
-    rowGroup.setDisplayName(sn.getRange(headerRow, rowGroupIndex).getValue()); // Set the header from row 7
+    const rg = pt.addRowGroup(rowGroupIndex);
+    rg.showTotals(true);
+    rg.setDisplayName(sn.getRange(hr, rowGroupIndex).getValue()); // Set the header from row 7
     Logger.log(`Added row group: ${rowGroupIndex}`);
     
     if (colGroupIndex <= lc && sheetName !== 'NUMPIVOT') {
       // Set the column group and its header
-      const colGroup = pt.addColumnGroup(colGroupIndex);
-      colGroup.showTotals(true);
-      colGroup.setDisplayName(sn.getRange(headerRow, colGroupIndex).getValue()); // Set the header from row 7
+      const cg = pt.addColumnGroup(colGroupIndex);
+      cg.showTotals(true);
+      cg.setDisplayName(sn.getRange(hr, colGroupIndex).getValue()); // Set the header from row 7
       Logger.log(`Added column group: ${colGroupIndex}`);
     }
     
-    const valueColIndex = sheetName === 'NUMPIVOT' ? 2 : Math.min(3, lc);
-    const pv = pt.addPivotValue(valueColIndex, pivotFunction);
+    const vc = sheetName === 'NUMPIVOT' ? 2 : Math.min(3, lc);
+    const pv = pt.addPivotValue(vc, pivotFunction);
     // Set the value header
-    pv.setDisplayName(sn.getRange(headerRow, valueColIndex).getValue()); // Set the header from row 7
-    Logger.log(`Added pivot value: Column ${valueColIndex}, Function: ${pivotFunction}`);
+    pv.setDisplayName(sn.getRange(hr, vc).getValue()); // Set the header from row 7
+    Logger.log(`Added pivot value: Column ${vc}, Function: ${pivotFunction}`);
     
     formatPivotTable(ps, true); // Always apply formatting, regardless of pivot table type
     
@@ -337,7 +323,7 @@ function createSummaryPivotTable(ssid) {
   try {
     const ss = SpreadsheetApp.openById(ssid);
     const sn = ss.getSheetByName('TRADE SUMMARY');
-    const headerRow = 7; // The row containing the headers
+    const hr = 7; // The row containing the headers
     const sc = 8; // Start from row 8 for the actual data (row after headers)
     const lr = sn.getLastRow();
     const lc = Math.min(sn.getLastColumn(), 3); // Ensure we don't exceed 3 columns
@@ -347,22 +333,22 @@ function createSummaryPivotTable(ssid) {
       return;
     }
     
-    const pr = sn.getRange(sc, 1, lr - sc + 1, lc);
+    const pr = sn.getRange(sc, 1, lr - sc + 1, lc); // Define the range of the Pivot Table source data
     const ps = ss.insertSheet('TICKER PERFORMANCE');
     const pt = ps.getRange('A1').createPivotTable(pr);
 
     // Set the row group and its header
-    const rowGroup = pt.addRowGroup(1);
-    rowGroup.showTotals(true);
-    rowGroup.setDisplayName(sn.getRange(headerRow, 1).getValue()); // Set the header from row 7
+    const rg = pt.addRowGroup(1);
+    rg.showTotals(true);
+    rg.setDisplayName(sn.getRange(hr, 1).getValue()); // Set the header from row 7
 
     // Set the count value and its header
-    const countValue = pt.addPivotValue(2, SpreadsheetApp.PivotTableSummarizeFunction.COUNTA);
-    countValue.setDisplayName(sn.getRange(headerRow, 2).getValue() + ' Count'); // Set the header from row 7 + ' Count'
+    const cv = pt.addPivotValue(2, SpreadsheetApp.PivotTableSummarizeFunction.COUNTA);
+    cv.setDisplayName(sn.getRange(hr, 2).getValue() + ' Count'); // Set the header from row 7 + ' Count'
 
     // Set the sum value and its header
-    const sumValue = pt.addPivotValue(3, SpreadsheetApp.PivotTableSummarizeFunction.SUM);
-    sumValue.setDisplayName(sn.getRange(headerRow, 3).getValue() + ' Sum'); // Set the header from row 7 + ' Sum'
+    const sv = pt.addPivotValue(3, SpreadsheetApp.PivotTableSummarizeFunction.SUM);
+    sv.setDisplayName(sn.getRange(hr, 3).getValue() + ' Sum'); // Set the header from row 7 + ' Sum'
     
     formatPivotTable(ps, true);
     
