@@ -195,9 +195,9 @@ function formatSummarySheet(sheet) {
     if (lastRow > 7) {
       Logger.log('Applying alternating colors...');
       const colorRange = sheet.getRange(7, 1, lastRow - 6, lastColumn);
-      const colors = createAlternatingColors(lastRow - 6);
-      Logger.log(`Created colors array with ${colors.length} rows`);
-      colorRange.setBackgroundColors(colors);
+      const colors = createAlternatingColors(lastRow - 6, lastColumn);
+      Logger.log(`Created colors array with ${colors.length} rows and ${colors[0].length} columns`);
+      colorRange.setBackgrounds(colors);
     }
     
     Logger.log(`Successfully formatted summary sheet. Rows: ${lastRow}, Columns: ${lastColumn}`);
@@ -251,9 +251,11 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
   try {
     const ss = SpreadsheetApp.openById(ssid); // Open the spreadsheet by ID (with the ssid identifier).
     const sn = ss.getSheetByName('TRADE SUMMARY'); // Access the 'TRADE SUMMARY' sheet within the spreadsheet.
-    const sc = 7; // Start from row 7 to exclude headers to define the range of the Pivot Table source data.
+    const sc = 6; // Start from row 6 to include headers and all data rows.
     const lr = sn.getLastRow();
     const lc = sn.getLastColumn();
+    
+    Logger.log(`Creating pivot table ${sheetName}. Source data: Rows: ${lr}, Columns: ${lc}`);
     
     if (lr < sc || lc < 3) {
       Logger.log(`Insufficient data for pivot table ${sheetName}. Rows: ${lr}, Columns: ${lc}`);
@@ -261,25 +263,34 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
     }
     
     const pr = sn.getRange(sc, 1, lr - sc + 1, lc); // Define the range of the Pivot Table source data.
+    Logger.log(`Pivot table range: ${pr.getA1Notation()}`);
+    Logger.log(`Pivot table range dimensions: Rows: ${pr.getNumRows()}, Columns: ${pr.getNumColumns()}`);
+    
     const ps = ss.insertSheet(sheetName); // Create a new sheet for the pivot table.
     const pt = ps.getRange('A1').createPivotTable(pr); // Create the pivot table in the new sheet.
     
-    pt.addRowGroup(rowGroupIndex); // Configure the pivot table row group.
+    pt.addRowGroup(rowGroupIndex).showTotals(true); // Configure the pivot table row group without totals.
+    Logger.log(`Added row group: ${rowGroupIndex}`);
+    
     if (colGroupIndex <= lc && sheetName !== 'NUMPIVOT') {
-      pt.addColumnGroup(colGroupIndex); // Configure the pivot table column group.
+      pt.addColumnGroup(colGroupIndex).showTotals(true); // Configure the pivot table column group without totals.
+      Logger.log(`Added column group: ${colGroupIndex}`);
     }
     
     const valueColIndex = sheetName === 'NUMPIVOT' ? 2 : Math.min(3, lc);
     const pv = pt.addPivotValue(valueColIndex, pivotFunction);
+    Logger.log(`Added pivot value: Column ${valueColIndex}, Function: ${pivotFunction}`);
     
     if (sheetName !== 'NUMPIVOT') {
       pv.setDisplayName('Amount (USD)');
     }
 
-    formatPivotTable(ps, sheetName !== 'NUMPIVOT');
+    formatPivotTable(ps, true); // Always apply formatting, regardless of pivot table type.
+    
     Logger.log(`Successfully created pivot table ${sheetName}`);
   } catch (error) {
     Logger.log(`Error creating pivot table ${sheetName}: ${error.message}`);
+    Logger.log(`Error stack: ${error.stack}`);
   }
 }
 
@@ -292,22 +303,24 @@ function createSummaryPivotTable(ssid) {
   try {
     const ss = SpreadsheetApp.openById(ssid);
     const sn = ss.getSheetByName('TRADE SUMMARY');
-    const sc = 7; // Start from row 7 to exclude headers
-    const lastRow = sn.getLastRow();
-    const lastCol = sn.getLastColumn();
+    const sc = 6; // Start from row 6 to include headers and all data rows
+    const lr = sn.getLastRow();
+    const lc = Math.min(sn.getLastColumn(), 3); // Ensure we don't exceed 3 columns
     
-    if (lastRow < sc || lastCol < 3) {
+    if (lr < sc || lc < 3) {
       Logger.log('Insufficient data for summary pivot table');
       return;
     }
     
-    const pr = sn.getRange(sc, 1, lastRow - sc + 1, lastCol);
+    const pr = sn.getRange(sc, 1, lr - sc + 1, lc);
     const ps = ss.insertSheet('TICKER PERFORMANCE');
     const pt = ps.getRange('A1').createPivotTable(pr);
 
-    pt.addRowGroup(1).showTotals(true).setDisplayName('Ticker'); // Add row group for column A.
-    pt.addPivotValue(2, SpreadsheetApp.PivotTableSummarizeFunction.COUNTA).setDisplayName('Count'); // Add count of column B.
-    pt.addPivotValue(3, SpreadsheetApp.PivotTableSummarizeFunction.SUM).setDisplayName('Amount (USD)'); // Add sum of column C and sort in descending order.
+    pt.addRowGroup(1).showTotals(true).setDisplayName('Ticker');
+    pt.addPivotValue(2, SpreadsheetApp.PivotTableSummarizeFunction.COUNTA).setDisplayName('Count');
+    pt.addPivotValue(3, SpreadsheetApp.PivotTableSummarizeFunction.SUM).setDisplayName('Amount (USD)');
+    
+    formatPivotTable(ps, true);
     
     Logger.log('Successfully created summary pivot table');
   } catch (error) {
@@ -318,24 +331,54 @@ function createSummaryPivotTable(ssid) {
 /**
  * Applies formatting to a pivot table.
  *
- * @param {SpreadsheetApp.Sheet} sheet - The sheet containing the pivot table.
+ * @param {SpreadsheetApp.Sheet} sh - The sheet containing the pivot table.
  * @param {boolean} formatAsCurrency - Whether to format the values as currency.
  */
-function formatPivotTable(sheet, formatAsCurrency) {
-  const dr = sheet.getDataRange(); // Get the data range after pivot creation.
-  sheet.setFrozenRows(2); // Freeze the first two (header) rows.
-  sheet.setFrozenColumns(1); // Freeze the header column.
+function formatPivotTable(sh, formatAsCurrency) {
+  const dr = sh.getDataRange(); // Get the data range after pivot creation.
+  const sn = sh.getName();
+  const lr = sh.getLastRow();
+  const lc = sh.getLastColumn();
+  
+  Logger.log(`Formatting pivot table ${sn}. Rows: ${lr}, Columns: ${lc}`);
+
+  // Freeze the first row for all pivot tables
+  sh.setFrozenRows(1);
+  
+  sh.setFrozenColumns(1); // Freeze the header column.
   dr.setFontFamily('Oswald'); // Use the 'Oswald' font in the data range.
   dr.setBorder(true, true, true, true, true, true); // Apply a border to every cell in the data range.
-  sheet.setHiddenGridlines(true); // Hide gridlines.
+  sh.setHiddenGridlines(true); // Hide gridlines.
 
   if (formatAsCurrency) {
-    dr.setNumberFormat('$#,##0.00'); // Format currencies as currency.
-    sheet.getRange("1:2").setNumberFormat("0"); // Format header row numbers as numbers.
+    if (sn === 'TICKER PERFORMANCE' || sn === 'NUMPIVOT') {
+      // Format column B as integer
+      if (lc >= 2) sh.getRange(2, 2, lr - 1, 1).setNumberFormat('#,##0');
+      // Format column C as currency (if it exists)
+      if (lc >= 3) sh.getRange(2, 3, lr - 1, 1).setNumberFormat('$#,##0.00');
+    } else {
+      // Format all columns except the first as currency
+      if (lc > 1) sh.getRange(2, 2, lr - 1, lc - 1).setNumberFormat('$#,##0.00');
+    }
+    sh.getRange(1, 1, 1, lc).setNumberFormat("@"); // Format header row as plain text
   }
 
   // Add alternating row colors
-  const lastRow = sheet.getLastRow();
-  const range = sheet.getRange(3, 1, lastRow - 2, sheet.getLastColumn());
-  range.setBackgroundColors(createAlternatingColors(lastRow - 2));
+  if (lr > 2) {
+    const ra = sh.getRange(2, 1, lr - 1, lc);
+    ra.setBackgroundColors(createAlternatingColors(lr - 1, lc));
+  }
+  
+  Logger.log(`Successfully formatted pivot table ${sn}`);
+}
+
+/**
+ * Creates an array of alternating background colors for rows.
+ *
+ * @param {number} numRows - The number of rows to create colors for.
+ * @param {number} numCols - The number of columns to create colors for.
+ * @return {string[][]} An array of color strings for each row.
+ */
+function createAlternatingColors(numRows, numCols) {
+  return Array(numRows).fill().map((_, i) => Array(numCols).fill((i % 2 === 0) ? '#ffffff' : '#f3f3f3'));
 }
