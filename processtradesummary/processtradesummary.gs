@@ -25,7 +25,7 @@
 
 // Configuration object
 const config = {
-  production: false, // Set to true for testing
+  production: false, // Set to false for testing
   testfolder: '1z38V8POr9lXNAoFBM-7I5_8GG9t5E2wx',
   realfolder: '1k0FhOtK-3_mGoH5CnC9axY2l2FsP7h1q',
   dumpfolder: '1zFsCLutd5pboDamsClZZBRsvPHB6QDwu',
@@ -75,8 +75,8 @@ function processFolder() {
     
     createPivotTables(datafileid); // Create pivot tables in the summary report.
 
-    const tp = ss.getSheetByName('TICKER PERFORMANCE'); // Get the TICKER PERFORMANCE sheet/
-    if (tp) { ss.moveActiveSheet(tp); ss.setActiveSheet(tp); } // Move TICKER PERFORMANCE sheet to the first position.
+    const tp = ss.getSheetByName('TICKER PERFORMANCE'); // Get the TICKER PERFORMANCE sheet.
+    if (tp) { ss.moveActiveSheet(ss.getSheets().indexOf(tp) + 1); } // Move the TICKER PERFORMANCE sheet to first position (index 0).
 
     Logger.log("Processing completed successfully.");
   } catch (error) {
@@ -234,7 +234,7 @@ function createPivotTables(ssid) {
   createPivotTable(ssid, 'MAXPIVOT', 1, 2, SpreadsheetApp.PivotTableSummarizeFunction.MAX);
   createPivotTable(ssid, 'AVEPIVOT', 1, 2, SpreadsheetApp.PivotTableSummarizeFunction.AVERAGE);
   createPivotTable(ssid, 'SUMPIVOT', 1, 2, SpreadsheetApp.PivotTableSummarizeFunction.SUM);
-  createPivotTable(ssid, 'NUMPIVOT', 2, 1, SpreadsheetApp.PivotTableSummarizeFunction.COUNT);
+  createPivotTable(ssid, 'NUMPIVOT', 1, 2, SpreadsheetApp.PivotTableSummarizeFunction.COUNT);
   createSummaryPivotTable(ssid);
 }
 
@@ -269,7 +269,7 @@ function createPivotTable(ssid, sheetName, rowGroupIndex, colGroupIndex, pivotFu
       pt.addColumnGroup(colGroupIndex); // Configure the pivot table column group.
     }
     
-    const valueColIndex = Math.min(3, lc);
+    const valueColIndex = sheetName === 'NUMPIVOT' ? 2 : Math.min(3, lc);
     const pv = pt.addPivotValue(valueColIndex, pivotFunction);
     
     if (sheetName !== 'NUMPIVOT') {
@@ -304,12 +304,10 @@ function createSummaryPivotTable(ssid) {
     const pr = sn.getRange(sc, 1, lastRow - sc + 1, lastCol);
     const ps = ss.insertSheet('TICKER PERFORMANCE');
     const pt = ps.getRange('A1').createPivotTable(pr);
-    
+
     pt.addRowGroup(1).showTotals(true).setDisplayName('Ticker'); // Add row group for column A.
-    pt.addPivotValue(2, SpreadsheetApp.PivotTableSummarizeFunction.COUNTA).setDisplayName('Count'); // Add count of column B
-    const sumValue = pt.addPivotValue(3, SpreadsheetApp.PivotTableSummarizeFunction.SUM);
-    sumValue.setDisplayName('Amount (USD)');
-    pt.sort({column: sumValue, ascending: false}); // Add sum of column C and sort in descending order.
+    pt.addPivotValue(2, SpreadsheetApp.PivotTableSummarizeFunction.COUNTA).setDisplayName('Count'); // Add count of column B.
+    pt.addPivotValue(3, SpreadsheetApp.PivotTableSummarizeFunction.SUM).setDisplayName('Amount (USD)'); // Add sum of column C and sort in descending order.
     
     Logger.log('Successfully created summary pivot table');
   } catch (error) {
